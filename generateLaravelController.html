@@ -1,0 +1,349 @@
+<!DOCTYPE>
+<html>
+<head>
+    <script src="jquery-3.3.1.js"></script>
+    <title>Generate Laravel Controller</title>
+</head>
+
+<body style="background-color: gray">
+        <textarea placeholder="Model" style="width: 5%; height: 400px; " id="modelName"></textarea>
+        <textarea placeholder="Schema" style="width: 25%; height: 400px; " id="schema">
+            $table->increments('id');
+            $table->integer('year');
+            $table->integer('number');
+            $table->integer('on');
+            $table->string('land_usage');
+            $table->string('available_building');
+            $table->integer('province_id');
+            $table->integer('district_id');
+            $table->text('address');
+            $table->float('longitude');
+            $table->float('width');
+            $table->float('area');
+            $table->date('start_use_date')->nullable();
+            $table->string('registration_number');
+            $table->string('registration_date');
+            $table->decimal('price', 18, 2);
+            $table->tinyInteger('is_border_existed');
+            $table->tinyInteger('is_flooded');
+            $table->tinyInteger('is_reachable');
+            $table->tinyInteger('is_utility_available');
+            $table->tinyInteger('is_available');
+            $table->timestamps();
+            $table->softDeletes();
+        </textarea>
+
+        <textarea placeholder="Request Mapping" style="width: 15%; height: 400px; " id="requestMapping"></textarea>
+        <textarea placeholder="response Mapping" style="width: 15%; height: 400px; " id="responseMapping"></textarea>
+</div>
+</body>
+
+</html>
+
+
+
+
+<script>
+    var data = {};
+    var output = "";
+
+    $( document ).ready(function() {
+        $("#schema").add("#modelName").on("input", function(e){
+            reloadData();
+        })
+
+
+        function reloadData() {
+            trimInput("schema");
+            let model = $("#modelName").val().trim();
+            let schema = $("#schema").val().split("\n");
+            let fields = getFields(schema);
+            let variables = getVariableNames(fields);
+            let dataTypes = getDataTypes(schema);
+            let alias = generateAlias(fields, variables);
+            let responseMapping = generateResponseMapping(model, fields, variables);
+            let requestMapping = generateRequestMapping(model, fields, variables);
+
+
+            data =
+            {
+                fields: fields,
+                variables: variables,
+                dataTypes: dataTypes,
+                alias: alias,
+                modelLow: lowerFirstChar(model),
+                modelCap: capitalizeFirstChar(model),
+                moduleLow: "moduleLOW",
+                moduleCap: "moduleCAP",
+                responseMapping: responseMapping,
+                requestMapping: requestMapping,
+            };
+        }
+    });
+
+
+
+
+    function generateResponseMapping(modelName, fields, variables)
+    {
+        var modelVariableName = lowerFirstChar(modelName);
+        var responseMapping = `public function mapResponseData(${data.modelCap} ${modelVariableName})\n`;
+        responseMapping += "{\n";
+        responseMapping += `\t$responseData = new ${modelName}();\n`;
+
+        fields.map((field, ind) => {
+            let leftVar = `\t$responseData->${variables[ind]}`.padEnd(55); // $respondData->registrationNumber
+            let rightVar = `\t$${modelVariableName}->${field}`;
+            responseMapping += `${leftVar} = ${rightVar};\n`;
+        });
+
+        responseMapping += "\n\n\treturn $responseData;\n";
+        responseMapping += "\n}";
+
+        return responseMapping;
+    }
+
+
+    function generateRequestMapping(modelName, fields, variables)
+    {
+        var modelVariableName = lowerFirstChar(modelName);
+        var requestMapping = `public function mapRequestData(${data.modelCap} ${modelVariableName}, Request $requestData)\n`;
+        requestMapping += "{\n";
+        // RequestMapping += `\t$requestData = new ${modelName}();\n`;
+
+        fields.map((field, ind) => {
+            let leftVar = `\t$${modelVariableName}->${field}`.padEnd(35);
+            let rightVar = `\t$requestData->${variables[ind]}`; // $respondData->registrationNumber
+            requestMapping += `${leftVar} = ${rightVar};\n`;
+        });
+
+
+        requestMapping += `\n\n\treturn $${modelVariableName};\n`;
+        requestMapping += "\n}";
+
+        return requestMapping;
+    }
+
+
+    function generateAlias(fields, variables)
+    {
+        var output = ``;
+
+        fields.map((field, ind)=>{
+            output += `"${field.padEnd(35)} AS ${variables[ind]}"\n,`;
+        });
+
+        return output;
+    }
+
+    function getFields(schema)
+    {
+        return schema.map(line=>
+        {
+            let field = line.trim();
+            let firstIndex = (field.indexOf('(\'') || field.indexOf("(\"")) + 2;
+            let nextIndex = (field.indexOf('\'', firstIndex) || field.lastIndexOf("\"", firstIndex));
+            return field.substring(firstIndex, nextIndex)
+        })
+    }
+
+
+    function getDataTypes(schema) {
+        return schema.map(line=>
+        {
+            let field = line.trim();
+            let firstIndex = field.indexOf('->') + 2;
+            let nextIndex = field.indexOf('(', firstIndex);
+            return field.substring(firstIndex, nextIndex)
+        })
+    }
+
+
+    function getVariableNames(field)
+    {
+        let output = field.map(fieldName=>{
+            if(fieldName.includes("_"))
+            {
+                let count = 0;
+                return fieldName.split("_").map(variable=>
+                {
+                    if(count++ > 0)
+                        return capitalizeFirstChar(variable);
+                    return variable;
+                }).join("")
+            }
+
+            else return fieldName;
+        })
+
+        return output;
+    }
+
+
+    function capitalizeFirstChar(characters)
+    {
+        if(characters.length > 0){
+            if(characters.length==2 && characters.includes("id"))
+            {
+                return "ID";
+            }
+
+            // general rule
+            return characters[0].toUpperCase()+characters.substr(1);
+        }
+        return "";
+    }
+
+
+    function lowerFirstChar(characters)
+    {
+        if(characters.length > 0){
+            if(characters.length==2 && characters.includes("id"))
+            {
+                return "ID";
+            }
+
+            // general rule
+            return characters[0].toLowerCase()+characters.substr(1);
+        }
+        return "";
+    }
+
+    function trimInput(controlName)
+    {
+        let input = $(`#${controlName}`).val();
+        if(input.trim().length> 1)
+        {
+            input = input.split('\n').map(ip => ip.trim()).join("\n");
+
+            //
+            setTimeout(function(){
+                $(`#${controlName}`).val(input);
+            }, 5000);
+        }
+    }
+
+    function reloadTemplate()
+    {
+        output =
+        `
+            <?php namespace Modules\\${data.moduleCap}\\Http\\Controllers;
+            use Modules\\${data.moduleCap}\\Entities\\${data.model};
+            use Pingpong\\Modules\\Routing\\Controller;
+            use Illuminate\\Http\\Request;
+            use Yajra\\Datatables\\Facades\\Datatables;
+            use Carbon\\Carbon;
+            use Illuminate\\Support\\Facades\\DB;
+
+
+            class ${data.model}Controller extends Controller
+            {
+
+                /********************VIEW********************/
+                public function registerView()
+                {
+                    return view('${data.moduleLow}::${data.modelLow}create', ['${data.moduleLow}Form'=>"", "crud"=>"register");
+                }
+
+
+                /********************CRUD*********************/
+                public function CRUD(Request $request)
+                {
+                    if($request->crud == "register")
+                    {
+                        $this->register($request);
+                    }
+                    elseif($request->crud == "update")
+                    {
+                        $this->update($request);
+                    }
+                }
+
+                public funtion delete($id)
+                {
+                    $${data.modelCap}::find($id)->delete();
+                }
+
+
+                private function inquiry($id)
+                {
+                    $${data.modelLow} = ${data.modelCap}::find($id)->get(mapResponseData())->first();
+                }
+
+
+                private function inquiryList()
+                {
+                    // $${data.modelLow} = ${data.modelCap}::get(mapResponseData());
+                    $${data.modelLow}Info = ${data.modelCap}::orderBy("id", "DESC")->get();
+                    $datatable = Datatables::of($${data.modelLow}Info)
+                        ->addColumn("operation", function($row)
+                        {
+                            $operation = '<a title="បង្ហាញ" href="' . url('inventory/land/view') .'/'. $row->id .'"><i class="fa fa-eye" style="color: #EC971F; font-size: 18px"></i></a>';
+                            $operation .= ' <a title="កែតម្រូវ" href="' . url('inventory/land/update') . '/' . $row->id . '/'  . '"><i class="fa fa-pencil-square-o" style="color: #286090; font-size: 18px"></i></a>';
+                            $operation .= ' <a title="លុបចោល" href="javascript:void(0);" onClick="deleteBuilding(\\'' .   $row->id.'/'.csrf_token() .'\\') " ><i class="fa fa-trash-o" style="color: #C9302C; font-size: 18px"></i></a>';
+
+                            return $operation;
+                        });
+
+                    return $datatable->make(true);
+                }
+
+
+
+                private function register(Request $request)
+                {
+                    $${data.modelLow} = $this->mapRequestData(new ${data.modelCap}, $request);
+                    $${data.modelLow}->save();
+
+                    //$request->id = $landModel->id;
+                    //$this->registerReceiver($request);
+                }
+
+                //private function registerReceiver(Request $request)
+                //{
+                //    $receiverModel = $this->mapReceiverRequestData(new Receiver(), $request);
+                //    $receiverModel->save();
+                //}
+
+
+
+
+                private function mapResponseData()
+                {
+                    return
+                    [
+
+                        ${data.alias}
+
+                    ];
+                }
+
+
+
+                ${data.requestMapping}
+
+
+
+
+
+
+            }
+        `;
+    }
+
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
