@@ -32,20 +32,7 @@
 
 
 <script>
-    var data = `CREATE TABLE EMAILS
-                (
-                    emailId    UUID PRIMARY KEY,
-                    purpose    VARCHAR(16) NOT NULL,
-                    receiverId UUID        NOT NULL,
-                    receiver   VARCHAR(64) NOT NULL,
-                    name       VARCHAR(32) NOT NULL,
-                    ip         VARCHAR(15) NOT NULL,
-                    createdAt  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    updatedAt  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-                    expiredAt  TIMESTAMP WITH TIME ZONE,
-                    status     VARCHAR(16) NOT NULL
-                );
-    `;
+    var data = ``;
     var output = "";
     var tableName = "";
     var tableAsVarName = "";
@@ -84,6 +71,12 @@
 
             // Generate
             generateOutput();
+
+
+
+            // Auto select and copy
+            $("#class").select();
+            document.execCommand('copy');
         });
 
 
