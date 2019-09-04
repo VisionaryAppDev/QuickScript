@@ -1,0 +1,261 @@
+<!DOCTYPE>
+<html>
+<head>
+    <script src="jquery-3.3.1.js"></script>
+    <title>Generate Laravel Controller</title>
+</head>
+
+<body style="background-color: gray">
+<textarea placeholder="Schema" style="width: 20%; height: 400px; " id="schema">CREATE TABLE EMAILS
+(
+    emailId UUID PRIMARY KEY,
+    purpose VARCHAR(16) NOT NULL,
+    receiverId UUID NOT NULL,
+    receiver VARCHAR(64) NOT NULL,
+    name VARCHAR(32) NOT NULL,
+    ip VARCHAR(15) NOT NULL,
+    createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    expiredAt TIMESTAMP WITH TIME ZONE,
+    status VARCHAR(16) NOT NULL
+);
+</textarea>
+<textarea placeholder="Field" style="width: 15%; height: 400px; " id="field"></textarea>
+<textarea placeholder="Full Class" style="width: 35%; height: 400px; " id="class"></textarea>
+<textarea placeholder="Insert Mapper" style="width: 25%; height: 400px; " id="insertMapper"></textarea>
+<textarea placeholder="Select Mapper" style="width: 25%; height: 400px; " id="selectMapper"></textarea>
+<textarea placeholder="Update Mapper" style="width: 25%; height: 400px; " id="updateMapper"></textarea>
+</div>
+</body>
+
+</html>
+
+
+<script>
+    var data = `CREATE TABLE EMAILS
+                (
+                    emailId    UUID PRIMARY KEY,
+                    purpose    VARCHAR(16) NOT NULL,
+                    receiverId UUID        NOT NULL,
+                    receiver   VARCHAR(64) NOT NULL,
+                    name       VARCHAR(32) NOT NULL,
+                    ip         VARCHAR(15) NOT NULL,
+                    createdAt  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    updatedAt  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                    expiredAt  TIMESTAMP WITH TIME ZONE,
+                    status     VARCHAR(16) NOT NULL
+                );
+    `;
+    var output = "";
+    var tableName = "";
+    var tableAsVarName = "";
+    // var fieldWithDquote = "";
+    var fieldWithoutDquote = "";
+    var mapperFields = "";
+    var selectFields = `cola "colA", colb "colB"`;
+    var whereField = `cola = #{colA}`;
+    var tableId = "";
+    var updateField = `old1 = new1, old2 = new2`;
+    var mapperClassName = "";
+
+    $(document).ready(function () {
+        $("#schema").add("#schema").on("input", function (e) {
+            // !! ordering is matter !!
+            data = $("#schema").val();
+            //
+            setTableName();
+            setTableAsVarName();
+            setTableId();
+
+
+            //
+            formatData();
+            setFieldWithoutDquote();
+            // setFieldWithDquote();
+
+
+            // Init Data b4 Generate
+            setUpdateFields();
+            setSelectFields();
+            setWhereFields();
+            setMapperFields();
+            setMapperClassName();
+
+
+            // Generate
+            generateOutput();
+        });
+
+
+        function formatData() {
+            removeBracket();
+            dataToFieldList();
+        }
+
+        function generateOutput() {
+            setFieldToUi();
+            setInsertUi();
+            setSelectUi();
+            setUpdateUi();
+            setFullClass();
+        }
+
+
+        function setFieldToUi() {
+            $("#field").val(selectFields);
+        }
+
+        function setInsertUi() {
+            let query = `
+                @Insert("""
+                INSERT
+                    INTO ${tableName}(${fieldWithoutDquote})
+                VALUES
+                    (${mapperFields})""" )
+                fun save(${tableAsVarName}: SimpleMap);
+            `;
+
+            $("#insertMapper").val(query);
+        }
+
+
+        function setFullClass() {
+            let selectQuery = $("#selectMapper").val();
+            let updateQuery = $("#updateMapper").val();
+            let insertQuery = $("#insertMapper").val();
+
+            let output = `
+                import org.apache.ibatis.annotations.Insert
+                import org.apache.ibatis.annotations.Mapper
+                import org.apache.ibatis.annotations.Select
+                import org.apache.ibatis.annotations.Update
+                import java.util.*
+
+                @Mapper
+                interface ${mapperClassName} {
+                    ${selectQuery}
+                    ${updateQuery}
+                    ${insertQuery}
+                }
+            `;
+
+            $("#class").val(output);
+        }
+
+        function setSelectUi() {
+            let query = `
+                @Select("""
+                SELECT
+                    ${selectFields}
+                FROM
+                    ${tableName}
+                WHERE
+                   ${whereField} """)
+                fun findById(${tableId}: UUID): SimpleMap
+            `;
+
+            $("#selectMapper").val(query);
+        }
+
+        function setUpdateUi() {
+            let query = `
+                @Update("""
+                UPDATE
+                    ${tableName}
+                SET
+                   ${updateField}
+                WHERE
+                    ${tableId} = #{${tableId}}""")
+                fun update(${tableAsVarName}: SimpleMap)
+            `;
+
+            $("#updateMapper").val(query);
+        }
+
+
+        function setFieldWithoutDquote() {
+            fieldWithoutDquote = data.join(", ");
+        }
+
+
+        // function setFieldWithDquote() {
+        //     fieldWithDquote = data.map(field => `"${field}"`).join(", ");
+        // }
+
+        function setSelectFields() {
+            selectFields = data.map(field => `${field} "${field}"`).join("\n, ");
+        }
+
+        function setWhereFields() {
+            whereField = data.map(field => `${field} = #{${field}}`).join("\n AND ");
+        }
+
+
+        function setUpdateFields() {
+            updateField = data.map(field => `${field} = #{${field}}`).join("\n, ");
+        }
+
+        function setTableId() {
+            let length = tableAsVarName.length;
+            let ending = tableAsVarName.substring(length - 3);
+
+            if (ending === "ies")
+                tableId = tableAsVarName.substring(0, length - 3) + "y";
+            else if (ending === "ses" || ending === "hes" || ending === "xes" || ending === "zes")
+                tableId = tableAsVarName.substring(0, length - 2);
+            else
+                tableId = tableAsVarName.substring(0, length - 1);
+        }
+
+        function setMapperClassName() {
+            let length = tableAsVarName.length;
+            let ending = tableAsVarName.substring(length - 3);
+
+            if (ending === "ies")
+                mapperClassName = tableName.substring(0, length - 3) + "y" + "Mapper";
+            else if (ending === "ses" || ending === "hes" || ending === "xes" || ending === "zes")
+                mapperClassName = tableName.substring(0, length - 2) + "Mapper";
+            else
+                mapperClassName = tableName.substring(0, length - 1) + "Mapper";
+        }
+
+        function setMapperFields() {
+            mapperFields = data.map(field => `#{${field}}`).join(", ");
+        }
+
+        function setTableName() { // "CREATE TABLE " not count quote, 13 char
+            tableName = data.substring(13, data.indexOf("\n"))
+        }
+
+        function setTableAsVarName() {
+            tableAsVarName = lowerCaseFirstChar(tableName);
+        }
+
+        function removeBracket() {
+            data = data.substring(data.indexOf("(") + 1, data.lastIndexOf(")"))
+        }
+
+        function dataToFieldList() {
+            data = data.split(",").map(a => a.trim().substring(0, a.trim().indexOf(" ")))
+        }
+
+        function lowerCaseFirstChar(inputChar) {
+            return inputChar.charAt(0).toLowerCase() + inputChar.slice(1);
+        }
+    })
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
