@@ -35,6 +35,8 @@
     var data = ``;
     var output = "";
     var tableName = "";
+    var fieldsDataType = [];
+    var fieldsHaveDefault = [];
     var tableAsVarName = "";
     // var fieldWithDquote = "";
     var fieldWithoutDquote = "";
@@ -82,6 +84,7 @@
 
         function formatData() {
             removeBracket();
+            setFieldsDataType();
             dataToFieldList();
         }
 
@@ -228,8 +231,18 @@
             data = data.substring(data.indexOf("(") + 1, data.lastIndexOf(")"))
         }
 
+        function setFieldsDataType() {
+            var tmp = data.split(",").map(a => a.trim().substring(a.trim().indexOf(" ")).trim());
+            fieldsDataType = tmp.map(a => a.substring(0, a.indexOf(" ")));
+        }
+
+        function setFieldsHaveDefault() {
+            var tmp =
+            // fieldsDataType = tmp.map(a => a.substring(0, a.indexOf(" ")));
+        }
+
         function dataToFieldList() {
-            data = data.split(",").map(a => a.trim().substring(0, a.trim().indexOf(" ")))
+            data = data.split(",").map(a => a.trim().substring(0, a.trim().indexOf(" ")));
         }
 
         function lowerCaseFirstChar(inputChar) {
@@ -237,6 +250,7 @@
         }
     })
 </script>
+
 
 
 
